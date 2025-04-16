@@ -47,6 +47,7 @@ server <- function(input, output, session) {
         ",
         ellmer::content_image_file(input$image_upload$datapath))
       
+      # This stream is for capturing the json into a reactive
       stream %...>% {
         result <- .
         json_result(jsonlite::parse_json(result))

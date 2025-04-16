@@ -2,6 +2,7 @@ library(shiny)
 library(shinychat)
 library(bslib)
 library(promises)
+library(magick)
 
 prompt <- readLines("meal_analyzer_prompt.md", warn = F)
 

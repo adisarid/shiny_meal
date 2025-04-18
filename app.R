@@ -22,20 +22,31 @@ ui <- page_sidebar(
     width = 400,
     chat_ui("chat", placeholder = "You can ask me about food!")
   ),
-  card(
-    layout_sidebar(
-      tags$script(HTML(
-        image_upload_script
-      )),
-      verbatimTextOutput("json_output"),
-      sidebar = tagList(
-        fileInput(
-          "image_upload",
-          "Upload Meal Image",
-          accept = c("image/png", "image/jpeg")
-        ),
-        uiOutput("preview")
+  layout_column_wrap(
+    width = 1 / 2,
+    card(
+      tags$script(HTML(image_upload_script)),
+      fileInput(
+        "image_upload",
+        "Upload Meal Image",
+        accept = c("image/png", "image/jpeg")
+      ),
+      shinyjs::useShinyjs(),
+      shinyjs::hidden(
+        input_task_button(
+          "confirm_image",
+          label = "Analyze!",
+          label_busy = "Analyzing...",
+          icon = icon("play")
+        )
       )
+    ),
+    card(
+      p("Image preview"),
+      uiOutput("preview")
+    ),
+    card(
+      verbatimTextOutput("json_output")
     )
   )
 )
@@ -43,27 +54,37 @@ ui <- page_sidebar(
 server <- function(input, output, session) {
   chat <- ellmer::chat_openai(system_prompt = prompt, model = "gpt-4o-mini")
 
+  # Observer for chat interactions
   observeEvent(input$chat_user_input, {
     stream <- chat$stream_async(input$chat_user_input)
     chat_append("chat", stream)
   })
 
+  # Retains image analysis results (json)
   json_result <- reactiveVal(NULL)
-  
+
+  # Show analyze button
+  observeEvent(input$image_upload$datapath, {
+    shinyjs::showElement("confirm_image")
+  })
+
   # Image preview
   output$preview <- renderUI({
     req(input$image_upload$datapath)
-    
+
     img <- magick::image_read(input$image_upload$datapath)
     tmpfile <- tempfile(fileext = ".png")
     magick::image_write(img, tmpfile, format = "png")
     base64 <- base64enc::dataURI(file = tmpfile, mime = "image/png")
-    
-    tags$img(src = base64, style = "max-width: 100%; height: auto; margin-top: 20px;")
+
+    tags$img(
+      src = base64,
+      style = "display: block; margin-left: 0; margin-right: auto; max-height: 250px; max-width: 100%; height: auto;"
+    )
   })
 
-  # You can add logic here to handle the uploaded image
-  observeEvent(input$image_upload, {
+  # Logic here to handle the uploaded image
+  observeEvent(input$confirm_image, {
     if (!is.null(input$image_upload)) {
       # Access the file path: input$image_upload$datapath
       # Access the file name: input$image_upload$name
@@ -98,7 +119,7 @@ server <- function(input, output, session) {
         }
     }
   })
-
+  
   output$json_output <- renderPrint({
     req(json_result())
     json_result()

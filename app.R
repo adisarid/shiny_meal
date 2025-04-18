@@ -3,6 +3,7 @@ library(shinychat)
 library(bslib)
 library(promises)
 library(magick)
+library(shinyjs)
 
 prompt <- readLines("meal_analyzer_prompt.md", warn = F)
 image_upload_script <- "

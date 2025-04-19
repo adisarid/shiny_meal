@@ -72,16 +72,13 @@ server <- function(input, output, session) {
   # Image preview
   output$preview <- renderUI({
     req(input$image_upload$datapath)
-
-    img <- magick::image_read(input$image_upload$datapath)
-    tmpfile <- tempfile(fileext = ".png")
-    magick::image_write(img, tmpfile, format = "png")
-    base64 <- base64enc::dataURI(file = tmpfile, mime = "image/png")
-
+    
+    base64 <- base64enc::dataURI(file = input$image_upload$datapath, mime = input$image_upload$type)
     tags$img(
       src = base64,
       style = "display: block; margin-left: 0; margin-right: auto; max-height: 250px; max-width: 100%; height: auto;"
     )
+    
   })
 
   # Logic here to handle the uploaded image

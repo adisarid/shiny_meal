@@ -7,30 +7,26 @@ library(shinyjs)
 
 prompt <- readLines("meal_analyzer_prompt.md", warn = F)
 
-# For mobile devices, this will allow choosing between gallery and camera
+# For mobile devices, this will switch to camera instead of browse
 image_upload_script <- "
-  document.addEventListener('DOMContentLoaded', function() {
-    var input = document.querySelector('input[type=\"file\"]');
-    if (input) {
-      input.removeAttribute('capture'); // Remove specific capture attribute
-      input.setAttribute('accept', 'image/*');
+    document.addEventListener('DOMContentLoaded', function() {
+      var input = document.querySelector('input[type=\"file\"]');
+      if (input) {
+        input.setAttribute('accept', 'image/*');
+        input.setAttribute('capture', 'environment');
+      }
+    });
+  "
 
-      // Trigger file input click to show options (camera/gallery) on mobile
-      input.addEventListener('click', function() {
-        this.removeAttribute('capture'); // Ensure no specific capture is set on click
-      });
-    }
-  });
-"
-
+# Setup the user interface
 ui <- page_sidebar(
   title = "Meal Analysis Dashboard",
   sidebar = sidebar(
-    width = 400,
+    width = 450,
     chat_ui("chat", placeholder = "You can ask me about food!")
   ),
   layout_column_wrap(
-    width = 1 / 2,
+    width = 1,
     card(
       tags$script(HTML(image_upload_script)),
       fileInput(
@@ -39,6 +35,7 @@ ui <- page_sidebar(
         accept = c("image/png", "image/jpeg")
       ),
       shinyjs::useShinyjs(),
+      uiOutput("preview"),
       shinyjs::hidden(
         input_task_button(
           "confirm_image",
@@ -47,15 +44,9 @@ ui <- page_sidebar(
           icon = icon("play")
         )
       )
-    ),
-    card(
-      p("Image preview"),
-      uiOutput("preview")
-    ),
-    card(
-      verbatimTextOutput("json_output")
     )
-  )
+  ),
+  card(reactable::reactableOutput("json_output"))
 )
 
 server <- function(input, output, session) {
@@ -78,13 +69,15 @@ server <- function(input, output, session) {
   # Image preview
   output$preview <- renderUI({
     req(input$image_upload$datapath)
-    
-    base64 <- base64enc::dataURI(file = input$image_upload$datapath, mime = input$image_upload$type)
+
+    base64 <- base64enc::dataURI(
+      file = input$image_upload$datapath,
+      mime = input$image_upload$type
+    )
     tags$img(
       src = base64,
       style = "display: block; margin-left: 0; margin-right: auto; max-height: 250px; max-width: 100%; height: auto;"
     )
-    
   })
 
   # Logic here to handle the uploaded image
@@ -123,10 +116,18 @@ server <- function(input, output, session) {
         }
     }
   })
-  
-  output$json_output <- renderPrint({
+
+  output$json_output <- reactable::renderReactable({
     req(json_result())
-    json_result()
+    
+    # Validate that there are ingredients in the json
+    validate(need("ingredients" %in% names(json_result()),
+                  message = "Error occurred, unable to parse meal."))
+    
+    json_result()$ingredients |>
+      dplyr::bind_rows() |>
+      tibble::as_tibble() |>
+      reactable::reactable()
   })
 }
 

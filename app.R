@@ -6,16 +6,22 @@ library(magick)
 library(shinyjs)
 
 prompt <- readLines("meal_analyzer_prompt.md", warn = F)
-image_upload_script <- "
-    document.addEventListener('DOMContentLoaded', function() {
-      var input = document.querySelector('input[type=\"file\"]');
-      if (input) {
-        input.setAttribute('accept', 'image/*');
-        input.setAttribute('capture', 'environment'); // or 'user' for front camera
-      }
-    });
-  "
 
+# For mobile devices, this will allow choosing between gallery and camera
+image_upload_script <- "
+  document.addEventListener('DOMContentLoaded', function() {
+    var input = document.querySelector('input[type=\"file\"]');
+    if (input) {
+      input.removeAttribute('capture'); // Remove specific capture attribute
+      input.setAttribute('accept', 'image/*');
+
+      // Trigger file input click to show options (camera/gallery) on mobile
+      input.addEventListener('click', function() {
+        this.removeAttribute('capture'); // Ensure no specific capture is set on click
+      });
+    }
+  });
+"
 
 ui <- page_sidebar(
   title = "Meal Analysis Dashboard",

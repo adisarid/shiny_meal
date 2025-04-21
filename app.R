@@ -119,11 +119,13 @@ server <- function(input, output, session) {
 
   output$json_output <- reactable::renderReactable({
     req(json_result())
-    
+
     # Validate that there are ingredients in the json
-    validate(need("ingredients" %in% names(json_result()),
-                  message = "Error occurred, unable to parse meal."))
-    
+    validate(need(
+      "ingredients" %in% names(json_result()),
+      message = "Error occurred, unable to parse meal."
+    ))
+
     json_result()$ingredients |>
       dplyr::bind_rows() |>
       tibble::as_tibble() |>
